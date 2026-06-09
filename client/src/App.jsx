@@ -1,7 +1,7 @@
-import Feed from './pages/Feed'
+import AppRoutes from './routes'
 
 function App() {
-  return <Feed />
+  return <AppRoutes />
 }
 
 export default App

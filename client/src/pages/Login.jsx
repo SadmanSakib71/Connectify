@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import '../assets/css/bootstrap.min.css';
 import '../assets/css/common.css';
 import '../assets/css/main.css';
@@ -106,7 +107,7 @@ const Login = () => {
                   <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
                     <div className="_social_login_bottom_txt">
                       <p className="_social_login_bottom_txt_para">
-                        Dont have an account? <a href="#0">Create New Account</a>
+                        Dont have an account? <Link to="/register">Create New Account</Link>
                       </p>
                     </div>
                   </div>
