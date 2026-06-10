@@ -1,10 +1,20 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { logo, profile, friendReq, profile1 } from './images';
 import { notifications } from './data';
 
 const FeedHeader = () => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <>
@@ -191,7 +201,7 @@ const FeedHeader = () => {
                     </a>
                   </li>
                   <li className="_nav_dropdown_list_item">
-                    <a href="#0" className="_nav_dropdown_link">
+                    <a href="#0" className="_nav_dropdown_link" onClick={handleLogout}>
                       <div className="_nav_drop_info">
                         <span>
                           <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 19 19">
