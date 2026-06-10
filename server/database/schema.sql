@@ -14,3 +14,5 @@ BEGIN
   );
 END
 GO
+
+-- Feed tables: run feedSchema.sql after this file

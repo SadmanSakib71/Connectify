@@ -59,3 +59,62 @@ export const authApi = {
 
   getMe: () => request('/auth/me'),
 };
+
+const requestFormData = async (endpoint, formData, method = 'POST') => {
+  const token = getToken();
+  const headers = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method,
+    headers,
+    body: formData,
+  });
+
+  return parseResponse(response);
+};
+
+export const feedApi = {
+  getFeed: () => request('/posts/feed'),
+
+  createPost: ({ text, visibility, image }) => {
+    const formData = new FormData();
+    formData.append('text', text);
+    formData.append('visibility', visibility);
+    if (image) {
+      formData.append('image', image);
+    }
+    return requestFormData('/posts', formData);
+  },
+
+  deletePost: (postId) =>
+    request(`/posts/${postId}`, { method: 'DELETE' }),
+
+  getComments: (postId) => request(`/posts/${postId}/comments`),
+
+  addComment: (postId, text) =>
+    request(`/posts/${postId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+
+  getReplies: (commentId) => request(`/comments/${commentId}/replies`),
+
+  addReply: (commentId, text) =>
+    request(`/comments/${commentId}/replies`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+
+  toggleLike: (targetType, targetId) =>
+    request('/likes/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ targetType, targetId }),
+    }),
+
+  getLikeStatus: (targetType, targetId) =>
+    request(`/likes?targetType=${targetType}&targetId=${targetId}`),
+};
