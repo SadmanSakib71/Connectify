@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getFullName } from '../../utils/formatTime';
 import { logo, profile, friendReq, profile1 } from './images';
 import { notifications } from './data';
 
 const FeedHeader = () => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const displayName = getFullName(user);
   const navigate = useNavigate();
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -139,10 +141,10 @@ const FeedHeader = () => {
             </ul>
             <div className="_header_nav_profile">
               <div className="_header_nav_profile_image">
-                <img src={profile} alt="Dylan Field" className="_nav_profile_img" />
+                <img src={profile} alt={displayName} className="_nav_profile_img" />
               </div>
               <div className="_header_nav_dropdown">
-                <p className="_header_nav_para">Dylan Field</p>
+                <p className="_header_nav_para">{displayName}</p>
                 <button
                   type="button"
                   className="_header_nav_dropdown_btn _dropdown_toggle"
@@ -156,10 +158,10 @@ const FeedHeader = () => {
               <div className={`_nav_profile_dropdown _profile_dropdown${profileOpen ? ' show' : ''}`}>
                 <div className="_nav_profile_dropdown_info">
                   <div className="_nav_profile_dropdown_image">
-                    <img src={profile} alt="Dylan Field" className="_nav_drop_img" />
+                    <img src={profile} alt={displayName} className="_nav_drop_img" />
                   </div>
                   <div className="_nav_profile_dropdown_info_txt">
-                    <h4 className="_nav_dropdown_title">Dylan Field</h4>
+                    <h4 className="_nav_dropdown_title">{displayName}</h4>
                     <a href="/profile" className="_nav_drop_profile">View Profile</a>
                   </div>
                 </div>
