@@ -18,6 +18,14 @@ const AppRoutes = () => {
           }
         />
         <Route
+          path="/feed"
+          element={
+            <ProtectedRoute>
+              <Feed />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/login"
           element={
             <GuestRoute>
