@@ -14,6 +14,20 @@ const toggleLike = asyncHandler(async (req, res) => {
   });
 });
 
+const getLikers = asyncHandler(async (req, res) => {
+  const result = await likeService.getLikers({
+    targetType: req.query.targetType,
+    targetId: req.query.targetId,
+    limit: req.query.limit,
+    offset: req.query.offset,
+  });
+
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
+});
+
 const getLikeStatus = asyncHandler(async (req, res) => {
   const result = await likeService.getLikeStatus({
     targetType: req.query.targetType,
@@ -27,4 +41,4 @@ const getLikeStatus = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { toggleLike, getLikeStatus };
+module.exports = { toggleLike, getLikers, getLikeStatus };

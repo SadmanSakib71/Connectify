@@ -117,4 +117,9 @@ export const feedApi = {
 
   getLikeStatus: (targetType, targetId) =>
     request(`/likes?targetType=${targetType}&targetId=${targetId}`),
+
+  getLikers: (targetType, targetId, { limit = 50, offset = 0 } = {}) =>
+    request(
+      `/likes/likers?targetType=${targetType}&targetId=${targetId}&limit=${limit}&offset=${offset}`,
+    ),
 };

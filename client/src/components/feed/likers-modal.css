@@ -1,0 +1,144 @@
+._likers_modal_overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 16px;
+}
+
+._likers_modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+._dark_wrapper ._likers_modal {
+  background: var(--bg5, #1f2028);
+}
+
+._likers_modal_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+._dark_wrapper ._likers_modal_header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+._likers_modal_title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #08060d;
+}
+
+._dark_wrapper ._likers_modal_title {
+  color: #f3f4f6;
+}
+
+._likers_modal_close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+  padding: 0 4px;
+}
+
+._likers_modal_body {
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+._likers_modal_item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+}
+
+._likers_modal_item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+._dark_wrapper ._likers_modal_item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+._likers_modal_avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+._likers_modal_name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #08060d;
+}
+
+._dark_wrapper ._likers_modal_name {
+  color: #f3f4f6;
+}
+
+._likers_modal_status {
+  padding: 24px 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+}
+
+._likers_modal_load_more {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 8px 20px 16px;
+  padding: 10px;
+  background: #f0f2f5;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #08060d;
+}
+
+._dark_wrapper ._likers_modal_load_more {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3f4f6;
+}
+
+._likers_trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+._likers_trigger._feed_inner_timeline_total_reacts_image {
+  display: flex;
+}
+
+._likers_trigger._total_reactions {
+  display: flex;
+  align-items: center;
+}

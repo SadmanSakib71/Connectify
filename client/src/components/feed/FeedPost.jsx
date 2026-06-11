@@ -11,6 +11,7 @@ import {
 } from './images';
 import { feedApi } from '../../services/api';
 import { formatTimeAgo, getFullName } from '../../utils/formatTime';
+import LikersTrigger from './LikersTrigger';
 
 const timelineMenuItems = [
   { label: 'Save Post', icon: 'bookmark', action: null },
@@ -20,29 +21,49 @@ const timelineMenuItems = [
   { label: 'Delete Post', icon: 'delete', action: 'delete' },
 ];
 
-const LikeAvatars = ({ likedBy, likeCount }) => {
-  if (!likeCount) return null;
-
+const LikeAvatars = ({ targetType, targetId, likedBy, likeCount }) => {
   const displayUsers = likedBy.slice(0, 5);
   const avatarImages = [reactImg1, reactImg2, reactImg3, reactImg4, reactImg5];
 
   return (
-    <div className="_feed_inner_timeline_total_reacts_image">
+    <LikersTrigger
+      targetType={targetType}
+      targetId={targetId}
+      likeCount={likeCount}
+      className="_feed_inner_timeline_total_reacts_image"
+    >
       {displayUsers.map((user, index) => (
         <img
           key={user.id}
           src={avatarImages[index] || reactImg1}
           alt={getFullName(user)}
           className={index === 0 ? '_react_img1' : '_react_img _rect_img_mbl_none'}
-          title={getFullName(user)}
         />
       ))}
-      <p className="_feed_inner_timeline_total_reacts_para" title={likedBy.map(getFullName).join(', ')}>
+      <p className="_feed_inner_timeline_total_reacts_para">
         {likeCount > displayUsers.length ? `${likeCount}+` : likeCount}
       </p>
-    </div>
+    </LikersTrigger>
   );
 };
+
+const LikeReactionBadge = ({ targetType, targetId, likeCount }) => (
+  <LikersTrigger
+    targetType={targetType}
+    targetId={targetId}
+    likeCount={likeCount}
+    className="_total_reactions"
+  >
+    <div className="_total_react">
+      <span className="_reaction_like">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+        </svg>
+      </span>
+    </div>
+    <span className="_total">{likeCount}</span>
+  </LikersTrigger>
+);
 
 const CommentBox = ({ textareaId, value, onChange, onSubmit, submitting }) => (
   <div className="_feed_inner_timeline_cooment_area">
@@ -99,20 +120,7 @@ const ReplyItem = ({ reply, onToggleLike }) => (
             <span>{reply.text}</span>
           </p>
         </div>
-        {reply.likeCount > 0 && (
-          <div className="_total_reactions">
-            <div className="_total_react">
-              <span className="_reaction_like">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-                </svg>
-              </span>
-            </div>
-            <span className="_total" title={reply.likedBy.map(getFullName).join(', ')}>
-              {reply.likeCount}
-            </span>
-          </div>
-        )}
+        <LikeReactionBadge targetType="reply" targetId={reply.id} likeCount={reply.likeCount} />
         <div className="_comment_reply">
           <div className="_comment_reply_num">
             <ul className="_comment_reply_list">
@@ -196,20 +204,7 @@ const CommentItem = ({ comment, onToggleLike, onReplyAdded }) => {
               <span>{comment.text}</span>
             </p>
           </div>
-          {comment.likeCount > 0 && (
-            <div className="_total_reactions">
-              <div className="_total_react">
-                <span className="_reaction_like">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-                  </svg>
-                </span>
-              </div>
-              <span className="_total" title={comment.likedBy.map(getFullName).join(', ')}>
-                {comment.likeCount}
-              </span>
-            </div>
-          )}
+          <LikeReactionBadge targetType="comment" targetId={comment.id} likeCount={comment.likeCount} />
           <div className="_comment_reply">
             <div className="_comment_reply_num">
               <ul className="_comment_reply_list">
@@ -419,7 +414,12 @@ const FeedPost = ({ post, currentUser, onPostUpdated, onPostDeleted }) => {
       </div>
 
       <div className="_feed_inner_timeline_total_reacts _padd_r24 _padd_l24 _mar_b26">
-        <LikeAvatars likedBy={likeState.likedBy} likeCount={likeState.likeCount} />
+        <LikeAvatars
+          targetType="post"
+          targetId={post.id}
+          likedBy={likeState.likedBy}
+          likeCount={likeState.likeCount}
+        />
         <div className="_feed_inner_timeline_total_reacts_txt">
           <p className="_feed_inner_timeline_total_reacts_para1">
             <span>{post.commentCount || comments.length}</span> Comment{(post.commentCount || comments.length) === 1 ? '' : 's'}

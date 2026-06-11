@@ -106,6 +106,54 @@ const getLikeInfoForTargets = async (targetType, targetIds, currentUserId) => {
   return infoMap;
 };
 
+const getLikers = async ({ targetType, targetId, limit = 50, offset = 0 }) => {
+  assertValidTargetType(targetType);
+
+  const exists = await targetExists(targetType, targetId);
+  if (!exists) {
+    throw new ApiError(404, `${targetType} not found`);
+  }
+
+  const pool = await poolPromise;
+
+  const countResult = await pool
+    .request()
+    .input("targetType", sql.NVarChar(10), targetType)
+    .input("targetId", sql.Int, targetId)
+    .query(
+      `SELECT COUNT(*) AS total
+       FROM likes
+       WHERE target_type = @targetType AND target_id = @targetId`,
+    );
+
+  const total = countResult.recordset[0].total;
+
+  const likersResult = await pool
+    .request()
+    .input("targetType", sql.NVarChar(10), targetType)
+    .input("targetId", sql.Int, targetId)
+    .input("offset", sql.Int, offset)
+    .input("limit", sql.Int, limit)
+    .query(
+      `SELECT u.id AS user_id, u.first_name, u.last_name, l.created_at AS liked_at
+       FROM likes l
+       INNER JOIN users u ON u.id = l.user_id
+       WHERE l.target_type = @targetType AND l.target_id = @targetId
+       ORDER BY l.created_at DESC
+       OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
+    );
+
+  return {
+    likers: likersResult.recordset.map((row) => ({
+      ...mapAuthor(row),
+      likedAt: row.liked_at,
+    })),
+    total,
+    limit,
+    offset,
+  };
+};
+
 const getLikeStatus = async ({ targetType, targetId, currentUserId }) => {
   assertValidTargetType(targetType);
 
@@ -176,6 +224,7 @@ const toggleLike = async ({ targetType, targetId, userId }) => {
 
 module.exports = {
   getLikeInfoForTargets,
+  getLikers,
   getLikeStatus,
   toggleLike,
 };
