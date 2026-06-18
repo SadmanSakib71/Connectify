@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require("../config/db");
+const { poolPromise, buildInClause } = require("../config/db");
 const ApiError = require("../utils/ApiError");
 const { mapAuthor } = require("../utils/feedMapper");
 
@@ -19,22 +19,12 @@ const targetExists = async (targetType, targetId) => {
     reply: "replies",
   };
 
-  const result = await pool
-    .request()
-    .input("targetId", sql.Int, targetId)
-    .query(`SELECT id FROM ${tableMap[targetType]} WHERE id = @targetId`);
+  const result = await pool.query(
+    `SELECT id FROM ${tableMap[targetType]} WHERE id = $1`,
+    [targetId],
+  );
 
-  return Boolean(result.recordset[0]);
-};
-
-const buildIdInputs = (request, targetIds) => {
-  const placeholders = targetIds.map((id, index) => {
-    const param = `targetId${index}`;
-    request.input(param, sql.Int, id);
-    return `@${param}`;
-  });
-
-  return placeholders.join(", ");
+  return Boolean(result.rows[0]);
 };
 
 const getLikeInfoForTargets = async (targetType, targetIds, currentUserId) => {
@@ -43,42 +33,37 @@ const getLikeInfoForTargets = async (targetType, targetIds, currentUserId) => {
   }
 
   const pool = await poolPromise;
-  const countRequest = pool.request().input("targetType", sql.NVarChar(10), targetType);
-  const idList = buildIdInputs(countRequest, targetIds);
+  const inClause = buildInClause(targetIds, 2);
 
-  const countResult = await countRequest.query(
+  const countResult = await pool.query(
     `SELECT target_id, COUNT(*) AS like_count
      FROM likes
-     WHERE target_type = @targetType AND target_id IN (${idList})
+     WHERE target_type = $1 AND target_id IN (${inClause.placeholders})
      GROUP BY target_id`,
+    [targetType, ...inClause.values],
   );
 
-  let userLikeResult = { recordset: [] };
+  let userLikeRows = [];
   if (currentUserId) {
-    const userLikeRequest = pool
-      .request()
-      .input("userId", sql.Int, currentUserId)
-      .input("targetType", sql.NVarChar(10), targetType);
-    const userIdList = buildIdInputs(userLikeRequest, targetIds);
-    userLikeResult = await userLikeRequest.query(
+    const userIdParam = inClause.nextIndex;
+    const userLikeResult = await pool.query(
       `SELECT target_id
        FROM likes
-       WHERE target_type = @targetType
-         AND target_id IN (${userIdList})
-         AND user_id = @userId`,
+       WHERE target_type = $1
+         AND target_id IN (${inClause.placeholders})
+         AND user_id = $${userIdParam}`,
+      [targetType, ...inClause.values, currentUserId],
     );
+    userLikeRows = userLikeResult.rows;
   }
 
-  const likedByRequest = pool
-    .request()
-    .input("targetType", sql.NVarChar(10), targetType);
-  const likedByIdList = buildIdInputs(likedByRequest, targetIds);
-  const likedByResult = await likedByRequest.query(
+  const likedByResult = await pool.query(
     `SELECT l.target_id, u.id AS user_id, u.first_name, u.last_name
      FROM likes l
      INNER JOIN users u ON u.id = l.user_id
-     WHERE l.target_type = @targetType AND l.target_id IN (${likedByIdList})
+     WHERE l.target_type = $1 AND l.target_id IN (${inClause.placeholders})
      ORDER BY l.created_at DESC`,
+    [targetType, ...inClause.values],
   );
 
   const infoMap = {};
@@ -86,16 +71,16 @@ const getLikeInfoForTargets = async (targetType, targetIds, currentUserId) => {
     infoMap[id] = { likeCount: 0, isLiked: false, likedBy: [] };
   });
 
-  countResult.recordset.forEach((row) => {
-    infoMap[row.target_id].likeCount = row.like_count;
+  countResult.rows.forEach((row) => {
+    infoMap[row.target_id].likeCount = Number(row.like_count);
   });
 
-  userLikeResult.recordset.forEach((row) => {
+  userLikeRows.forEach((row) => {
     infoMap[row.target_id].isLiked = true;
   });
 
   const likedByCount = {};
-  likedByResult.recordset.forEach((row) => {
+  likedByResult.rows.forEach((row) => {
     const count = likedByCount[row.target_id] || 0;
     if (count < LIKED_BY_LIMIT) {
       infoMap[row.target_id].likedBy.push(mapAuthor(row));
@@ -116,35 +101,27 @@ const getLikers = async ({ targetType, targetId, limit = 50, offset = 0 }) => {
 
   const pool = await poolPromise;
 
-  const countResult = await pool
-    .request()
-    .input("targetType", sql.NVarChar(10), targetType)
-    .input("targetId", sql.Int, targetId)
-    .query(
-      `SELECT COUNT(*) AS total
-       FROM likes
-       WHERE target_type = @targetType AND target_id = @targetId`,
-    );
+  const countResult = await pool.query(
+    `SELECT COUNT(*) AS total
+     FROM likes
+     WHERE target_type = $1 AND target_id = $2`,
+    [targetType, targetId],
+  );
 
-  const total = countResult.recordset[0].total;
+  const total = Number(countResult.rows[0].total);
 
-  const likersResult = await pool
-    .request()
-    .input("targetType", sql.NVarChar(10), targetType)
-    .input("targetId", sql.Int, targetId)
-    .input("offset", sql.Int, offset)
-    .input("limit", sql.Int, limit)
-    .query(
-      `SELECT u.id AS user_id, u.first_name, u.last_name, l.created_at AS liked_at
-       FROM likes l
-       INNER JOIN users u ON u.id = l.user_id
-       WHERE l.target_type = @targetType AND l.target_id = @targetId
-       ORDER BY l.created_at DESC
-       OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`,
-    );
+  const likersResult = await pool.query(
+    `SELECT u.id AS user_id, u.first_name, u.last_name, l.created_at AS liked_at
+     FROM likes l
+     INNER JOIN users u ON u.id = l.user_id
+     WHERE l.target_type = $1 AND l.target_id = $2
+     ORDER BY l.created_at DESC
+     OFFSET $3 LIMIT $4`,
+    [targetType, targetId, offset, limit],
+  );
 
   return {
-    likers: likersResult.recordset.map((row) => ({
+    likers: likersResult.rows.map((row) => ({
       ...mapAuthor(row),
       likedAt: row.liked_at,
     })),
@@ -181,39 +158,27 @@ const toggleLike = async ({ targetType, targetId, userId }) => {
 
   const pool = await poolPromise;
 
-  const existing = await pool
-    .request()
-    .input("userId", sql.Int, userId)
-    .input("targetType", sql.NVarChar(10), targetType)
-    .input("targetId", sql.Int, targetId)
-    .query(
-      `SELECT id FROM likes
-       WHERE user_id = @userId AND target_type = @targetType AND target_id = @targetId`,
-    );
+  const existing = await pool.query(
+    `SELECT id FROM likes
+     WHERE user_id = $1 AND target_type = $2 AND target_id = $3`,
+    [userId, targetType, targetId],
+  );
 
   let liked;
 
-  if (existing.recordset[0]) {
-    await pool
-      .request()
-      .input("userId", sql.Int, userId)
-      .input("targetType", sql.NVarChar(10), targetType)
-      .input("targetId", sql.Int, targetId)
-      .query(
-        `DELETE FROM likes
-         WHERE user_id = @userId AND target_type = @targetType AND target_id = @targetId`,
-      );
+  if (existing.rows[0]) {
+    await pool.query(
+      `DELETE FROM likes
+       WHERE user_id = $1 AND target_type = $2 AND target_id = $3`,
+      [userId, targetType, targetId],
+    );
     liked = false;
   } else {
-    await pool
-      .request()
-      .input("userId", sql.Int, userId)
-      .input("targetType", sql.NVarChar(10), targetType)
-      .input("targetId", sql.Int, targetId)
-      .query(
-        `INSERT INTO likes (user_id, target_type, target_id)
-         VALUES (@userId, @targetType, @targetId)`,
-      );
+    await pool.query(
+      `INSERT INTO likes (user_id, target_type, target_id)
+       VALUES ($1, $2, $3)`,
+      [userId, targetType, targetId],
+    );
     liked = true;
   }
 

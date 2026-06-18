@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require("../config/db");
+const { poolPromise } = require("../config/db");
 const ApiError = require("../utils/ApiError");
 const { mapComment } = require("../utils/feedMapper");
 const { getLikeInfoForTargets } = require("./likeService");
@@ -6,26 +6,20 @@ const replyService = require("./replyService");
 
 const postExists = async (postId) => {
   const pool = await poolPromise;
-  const result = await pool
-    .request()
-    .input("postId", sql.Int, postId)
-    .query(`SELECT id FROM posts WHERE id = @postId`);
+  const result = await pool.query(`SELECT id FROM posts WHERE id = $1`, [postId]);
 
-  return Boolean(result.recordset[0]);
+  return Boolean(result.rows[0]);
 };
 
 const canAccessPost = async (postId, userId) => {
   const pool = await poolPromise;
-  const result = await pool
-    .request()
-    .input("postId", sql.Int, postId)
-    .input("userId", sql.Int, userId)
-    .query(
-      `SELECT id FROM posts
-       WHERE id = @postId AND (visibility = 'public' OR user_id = @userId)`,
-    );
+  const result = await pool.query(
+    `SELECT id FROM posts
+     WHERE id = $1 AND (visibility = 'public' OR user_id = $2)`,
+    [postId, userId],
+  );
 
-  return Boolean(result.recordset[0]);
+  return Boolean(result.rows[0]);
 };
 
 const getCommentsByPost = async ({ postId, userId }) => {
@@ -36,19 +30,17 @@ const getCommentsByPost = async ({ postId, userId }) => {
 
   const pool = await poolPromise;
 
-  const result = await pool
-    .request()
-    .input("postId", sql.Int, postId)
-    .query(
-      `SELECT c.id, c.post_id, c.user_id, c.text, c.created_at,
-              u.first_name, u.last_name
-       FROM comments c
-       INNER JOIN users u ON u.id = c.user_id
-       WHERE c.post_id = @postId
-       ORDER BY c.created_at ASC`,
-    );
+  const result = await pool.query(
+    `SELECT c.id, c.post_id, c.user_id, c.text, c.created_at,
+            u.first_name, u.last_name
+     FROM comments c
+     INNER JOIN users u ON u.id = c.user_id
+     WHERE c.post_id = $1
+     ORDER BY c.created_at ASC`,
+    [postId],
+  );
 
-  const comments = result.recordset;
+  const comments = result.rows;
   const commentIds = comments.map((c) => c.id);
   const likeInfoMap = await getLikeInfoForTargets("comment", commentIds, userId);
   const repliesMap = await replyService.getRepliesByCommentIds(commentIds, userId);
@@ -70,25 +62,21 @@ const addComment = async ({ postId, userId, text }) => {
 
   const pool = await poolPromise;
 
-  const result = await pool
-    .request()
-    .input("postId", sql.Int, postId)
-    .input("userId", sql.Int, userId)
-    .input("text", sql.NVarChar(sql.MAX), text)
-    .query(
-      `INSERT INTO comments (post_id, user_id, text)
-       OUTPUT INSERTED.id, INSERTED.post_id, INSERTED.user_id, INSERTED.text, INSERTED.created_at
-       VALUES (@postId, @userId, @text)`,
-    );
+  const result = await pool.query(
+    `INSERT INTO comments (post_id, user_id, text)
+     VALUES ($1, $2, $3)
+     RETURNING id, post_id, user_id, text, created_at`,
+    [postId, userId, text],
+  );
 
-  const comment = result.recordset[0];
+  const comment = result.rows[0];
 
-  const userResult = await pool
-    .request()
-    .input("userId", sql.Int, userId)
-    .query(`SELECT first_name, last_name FROM users WHERE id = @userId`);
+  const userResult = await pool.query(
+    `SELECT first_name, last_name FROM users WHERE id = $1`,
+    [userId],
+  );
 
-  const user = userResult.recordset[0];
+  const user = userResult.rows[0];
 
   return mapComment(
     {

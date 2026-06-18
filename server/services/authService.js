@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { sql, poolPromise } = require("../config/db");
+const { poolPromise } = require("../config/db");
 const ApiError = require("../utils/ApiError");
 const { mapUserToResponse } = require("../utils/userMapper");
 
@@ -19,30 +19,26 @@ const generateToken = (userId) => {
 
 const findUserByEmail = async (email) => {
   const pool = await poolPromise;
-  const result = await pool
-    .request()
-    .input("email", sql.NVarChar(255), email)
-    .query(
-      `SELECT id, first_name, last_name, email, password, created_at
-       FROM users
-       WHERE email = @email`,
-    );
+  const result = await pool.query(
+    `SELECT id, first_name, last_name, email, password, created_at
+     FROM users
+     WHERE email = $1`,
+    [email],
+  );
 
-  return result.recordset[0] || null;
+  return result.rows[0] || null;
 };
 
 const findUserById = async (id) => {
   const pool = await poolPromise;
-  const result = await pool
-    .request()
-    .input("id", sql.Int, id)
-    .query(
-      `SELECT id, first_name, last_name, email, created_at
-       FROM users
-       WHERE id = @id`,
-    );
+  const result = await pool.query(
+    `SELECT id, first_name, last_name, email, created_at
+     FROM users
+     WHERE id = $1`,
+    [id],
+  );
 
-  return result.recordset[0] || null;
+  return result.rows[0] || null;
 };
 
 const registerUser = async ({ firstName, lastName, email, password }) => {
@@ -55,20 +51,14 @@ const registerUser = async ({ firstName, lastName, email, password }) => {
   const pool = await poolPromise;
 
   try {
-    const result = await pool
-      .request()
-      .input("firstName", sql.NVarChar(100), firstName)
-      .input("lastName", sql.NVarChar(100), lastName)
-      .input("email", sql.NVarChar(255), email)
-      .input("password", sql.NVarChar(255), hashedPassword)
-      .query(
-        `INSERT INTO users (first_name, last_name, email, password)
-         OUTPUT INSERTED.id, INSERTED.first_name, INSERTED.last_name,
-                INSERTED.email, INSERTED.created_at
-         VALUES (@firstName, @lastName, @email, @password)`,
-      );
+    const result = await pool.query(
+      `INSERT INTO users (first_name, last_name, email, password)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, first_name, last_name, email, created_at`,
+      [firstName, lastName, email, hashedPassword],
+    );
 
-    const user = result.recordset[0];
+    const user = result.rows[0];
     const token = generateToken(user.id);
 
     return {
@@ -76,7 +66,7 @@ const registerUser = async ({ firstName, lastName, email, password }) => {
       token,
     };
   } catch (err) {
-    if (err.number === 2627 || err.number === 2601) {
+    if (err.code === "23505") {
       throw new ApiError(409, "Email is already registered");
     }
     throw err;

@@ -1,22 +1,25 @@
-const sql = require("mssql");
+const { Pool } = require("pg");
 
-const config = {
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  server: process.env.DB_SERVER || "localhost",
-  database: process.env.DB_DATABASE || process.env.DB_NAME || "social_app",
-  port: Number(process.env.DB_PORT) || 1433,
-  options: {
-    encrypt: process.env.DB_ENCRYPT === "true",
-    trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== "false",
-    enableArithAbort: true,
-  },
-};
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    }
+  : {
+      host: process.env.DB_HOST || "localhost",
+      port: Number(process.env.DB_PORT) || 5432,
+      user: process.env.DB_USER || "postgres",
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE || process.env.DB_NAME || "social_app",
+    };
 
-const poolPromise = new sql.ConnectionPool(config)
+const pool = new Pool(poolConfig);
+
+const poolPromise = pool
   .connect()
-  .then((pool) => {
-    console.log("Connected to SQL Server");
+  .then((client) => {
+    client.release();
+    console.log("Connected to PostgreSQL");
     return pool;
   })
   .catch((err) => {
@@ -24,4 +27,9 @@ const poolPromise = new sql.ConnectionPool(config)
     throw err;
   });
 
-module.exports = { sql, poolPromise };
+const buildInClause = (ids, startIndex = 1) => {
+  const placeholders = ids.map((_, i) => `$${startIndex + i}`).join(", ");
+  return { placeholders, values: ids, nextIndex: startIndex + ids.length };
+};
+
+module.exports = { pool, poolPromise, buildInClause };

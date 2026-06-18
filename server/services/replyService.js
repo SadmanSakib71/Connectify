@@ -1,26 +1,16 @@
-const { sql, poolPromise } = require("../config/db");
+const { poolPromise, buildInClause } = require("../config/db");
 const ApiError = require("../utils/ApiError");
 const { mapReply } = require("../utils/feedMapper");
 const { getLikeInfoForTargets } = require("./likeService");
 
 const commentExists = async (commentId) => {
   const pool = await poolPromise;
-  const result = await pool
-    .request()
-    .input("commentId", sql.Int, commentId)
-    .query(`SELECT id FROM comments WHERE id = @commentId`);
+  const result = await pool.query(
+    `SELECT id FROM comments WHERE id = $1`,
+    [commentId],
+  );
 
-  return Boolean(result.recordset[0]);
-};
-
-const buildIdInputs = (request, commentIds) => {
-  const placeholders = commentIds.map((id, index) => {
-    const param = `commentId${index}`;
-    request.input(param, sql.Int, id);
-    return `@${param}`;
-  });
-
-  return placeholders.join(", ");
+  return Boolean(result.rows[0]);
 };
 
 const getRepliesByCommentIds = async (commentIds, userId) => {
@@ -29,19 +19,19 @@ const getRepliesByCommentIds = async (commentIds, userId) => {
   }
 
   const pool = await poolPromise;
-  const request = pool.request();
-  const idList = buildIdInputs(request, commentIds);
+  const { placeholders, values } = buildInClause(commentIds);
 
-  const result = await request.query(
+  const result = await pool.query(
     `SELECT r.id, r.comment_id, r.user_id, r.text, r.created_at,
             u.first_name, u.last_name
      FROM replies r
      INNER JOIN users u ON u.id = r.user_id
-     WHERE r.comment_id IN (${idList})
+     WHERE r.comment_id IN (${placeholders})
      ORDER BY r.created_at ASC`,
+    values,
   );
 
-  const replies = result.recordset;
+  const replies = result.rows;
   const replyIds = replies.map((r) => r.id);
   const likeInfoMap = await getLikeInfoForTargets("reply", replyIds, userId);
 
@@ -77,25 +67,21 @@ const addReply = async ({ commentId, userId, text }) => {
 
   const pool = await poolPromise;
 
-  const result = await pool
-    .request()
-    .input("commentId", sql.Int, commentId)
-    .input("userId", sql.Int, userId)
-    .input("text", sql.NVarChar(sql.MAX), text)
-    .query(
-      `INSERT INTO replies (comment_id, user_id, text)
-       OUTPUT INSERTED.id, INSERTED.comment_id, INSERTED.user_id, INSERTED.text, INSERTED.created_at
-       VALUES (@commentId, @userId, @text)`,
-    );
+  const result = await pool.query(
+    `INSERT INTO replies (comment_id, user_id, text)
+     VALUES ($1, $2, $3)
+     RETURNING id, comment_id, user_id, text, created_at`,
+    [commentId, userId, text],
+  );
 
-  const reply = result.recordset[0];
+  const reply = result.rows[0];
 
-  const userResult = await pool
-    .request()
-    .input("userId", sql.Int, userId)
-    .query(`SELECT first_name, last_name FROM users WHERE id = @userId`);
+  const userResult = await pool.query(
+    `SELECT first_name, last_name FROM users WHERE id = $1`,
+    [userId],
+  );
 
-  const user = userResult.recordset[0];
+  const user = userResult.rows[0];
 
   return mapReply(
     {
