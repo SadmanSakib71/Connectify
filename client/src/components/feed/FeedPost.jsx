@@ -9,7 +9,7 @@ import {
   commentImg,
   txtImg,
 } from "./images";
-import { feedApi } from "../../services/api";
+import { feedApi, resolveMediaUrl } from "../../services/api";
 import { formatTimeAgo, getFullName } from "../../utils/formatTime";
 import LikersTrigger from "./LikersTrigger";
 
@@ -525,7 +525,7 @@ const FeedPost = ({ post, currentUser, onPostUpdated, onPostDeleted }) => {
         <h4 className="_feed_inner_timeline_post_title">{post.text}</h4>
         {post.imageUrl && (
           <div className="_feed_inner_timeline_image">
-            <img src={post.imageUrl} alt="" className="_time_img" />
+            <img src={resolveMediaUrl(post.imageUrl)} alt="" className="_time_img" />
           </div>
         )}
       </div>

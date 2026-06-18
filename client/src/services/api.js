@@ -1,4 +1,15 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const RENDER_API_URL = 'https://connectify-api-34ww.onrender.com/api';
+
+const API_BASE = import.meta.env.VITE_API_URL || RENDER_API_URL;
+
+const API_ORIGIN = import.meta.env.VITE_API_ORIGIN
+  || (API_BASE.startsWith('http') ? API_BASE.replace(/\/api\/?$/, '') : '');
+
+export const resolveMediaUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return API_ORIGIN ? `${API_ORIGIN}${url}` : url;
+};
 
 const TOKEN_KEY = 'connectify_token';
 
